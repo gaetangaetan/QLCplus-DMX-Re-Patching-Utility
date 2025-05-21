@@ -83,7 +83,7 @@ function renderFixturesTable(fixtures) {
           <option value="3"${f.universe == 3 ? ' selected' : ''}>3</option>
         </select>
       </td>
-      <td><input type="number" min="1" max="512" value="${f.address}" data-idx="${idx}" class="address-input"></td>
+      <td><input type="number" min="1" max="512" value="${parseInt(f.address, 10) + 1}" data-idx="${idx}" class="address-input"></td>
       <td>${f.channels}</td>
     </tr>`;
   });
@@ -183,7 +183,7 @@ function handleAddressInput(e) {
   const isChecked = selectedRows.includes(id);
   if (isChecked) {
     // Group move
-    const oldVal = parseInt(fixtures[idx].address, 10);
+    const oldVal = parseInt(fixtures[idx].address, 10) + 1; // ancienne valeur affichée
     if (!isNaN(val) && !isNaN(oldVal)) {
       const delta = val - oldVal;
       selectedRows.forEach(selId => {
@@ -191,17 +191,17 @@ function handleAddressInput(e) {
           const i = fixtures.findIndex(f => f.id === selId);
           if (i !== -1) {
             const input = document.querySelector(`.address-input[data-idx="${i}"]`);
-            const oldAddr = parseInt(fixtures[i].address, 10);
+            const oldAddr = parseInt(fixtures[i].address, 10) + 1;
             if (!isNaN(oldAddr)) {
               input.value = oldAddr + delta;
-              fixtures[i].address = oldAddr + delta;
+              fixtures[i].address = oldAddr + delta - 1; // stockage -1
             }
           }
         }
       });
     }
   }
-  fixtures[idx].address = val;
+  fixtures[idx].address = val - 1; // stockage -1
   updateCollisionHighlight();
 }
 
@@ -229,11 +229,10 @@ function updateCollisionHighlight() {
   // Check DMX  address bounds (1-512)
   document.querySelectorAll('tr[data-idx]').forEach(tr => {
     const idx = parseInt(tr.dataset.idx, 10);
-    const addr = parseInt(fixtures[idx].address, 10);
+    const addr = parseInt(fixtures[idx].address, 10) + 1;
     if (isNaN(addr) || addr < 1 || addr > 512) {
       tr.style.background = '#ffe0e0';
     }
-    
   });
 }
 
@@ -250,7 +249,7 @@ function handleValidate() {
       hasInvalid = true;
     } else {
       input.classList.remove('invalid');
-      fixtures[idx].address = val;
+      fixtures[idx].address = val - 1; // stockage -1
     }
   });
   if (hasInvalid) {
@@ -262,7 +261,7 @@ function handleValidate() {
   if (conflicts.length > 0) {
     let msg = 'Conflict(s) detected:<ul>';
     conflicts.forEach(c => {
-      msg += `<li>Universe ${c.universe}: "${c.name1}" [${c.range1}] and "${c.name2}" [${c.range2}] overlap</li>`;
+      msg += `<li>Universe ${c.universe}: "${c.name1}" [${parseInt(c.range1.split('-')[0],10)+1}-${parseInt(c.range1.split('-')[1],10)+1}] and "${c.name2}" [${parseInt(c.range2.split('-')[0],10)+1}-${parseInt(c.range2.split('-')[1],10)+1}] overlap</li>`;
     });
     msg += '</ul>';
     showMessage(msg, 'error');
