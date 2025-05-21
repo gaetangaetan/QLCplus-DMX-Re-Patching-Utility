@@ -70,9 +70,9 @@ function renderFixturesTable(fixtures) {
     + '<th class="sortable" data-sort="channels">Canaux</th>' +
     '</tr></thead><tbody>';
   fixtures.forEach((f, idx) => {
-    const selected = selectedRows.includes(idx);
-    html += `<tr data-idx="${idx}">
-      <td class="select-cell${selected ? ' selected' : ''}" data-idx="${idx}"></td>
+    const selected = selectedRows.includes(f.id);
+    html += `<tr data-idx="${idx}" data-id="${f.id}">
+      <td class="select-cell${selected ? ' selected' : ''}" data-idx="${idx}" data-id="${f.id}"></td>
       <td>${f.name}</td>
       <td>${f.id}</td>
       <td>
@@ -92,7 +92,7 @@ function renderFixturesTable(fixtures) {
 
   // Boutons tout sélectionner/désélectionner
   document.getElementById('checkAllBtn').addEventListener('click', () => {
-    selectedRows = fixtures.map((_, i) => i);
+    selectedRows = fixtures.map(f => f.id);
     renderFixturesTable(fixtures);
     updateCollisionHighlight();
   });
@@ -106,16 +106,16 @@ function renderFixturesTable(fixtures) {
   document.querySelectorAll('.select-cell').forEach(cell => {
     cell.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
-      const idx = parseInt(cell.dataset.idx, 10);
+      const id = cell.dataset.id;
       isDraggingSelect = true;
-      dragSelectValue = !selectedRows.includes(idx);
-      toggleSelect(idx, dragSelectValue);
+      dragSelectValue = !selectedRows.includes(id);
+      toggleSelect(id, dragSelectValue);
       e.preventDefault();
     });
     cell.addEventListener('mouseenter', e => {
       if (isDraggingSelect) {
-        const idx = parseInt(cell.dataset.idx, 10);
-        toggleSelect(idx, dragSelectValue);
+        const id = cell.dataset.id;
+        toggleSelect(id, dragSelectValue);
       }
     });
   });
@@ -150,13 +150,13 @@ function renderFixturesTable(fixtures) {
   });
 }
 
-function toggleSelect(idx, value) {
+function toggleSelect(id, value) {
   if (value) {
-    if (!selectedRows.includes(idx)) selectedRows.push(idx);
+    if (!selectedRows.includes(id)) selectedRows.push(id);
   } else {
-    selectedRows = selectedRows.filter(i => i !== idx);
+    selectedRows = selectedRows.filter(i => i !== id);
   }
-  const cell = document.querySelector(`.select-cell[data-idx="${idx}"]`);
+  const cell = document.querySelector(`.select-cell[data-id="${id}"]`);
   if (cell) {
     if (value) cell.classList.add('selected');
     else cell.classList.remove('selected');
@@ -179,19 +179,23 @@ function sortFixtures(key, asc) {
 function handleAddressInput(e) {
   const idx = parseInt(e.target.dataset.idx, 10);
   const val = parseInt(e.target.value, 10);
-  const isChecked = selectedRows.includes(idx);
+  const id = fixtures[idx].id;
+  const isChecked = selectedRows.includes(id);
   if (isChecked) {
     // Déplacement groupé
     const oldVal = parseInt(fixtures[idx].address, 10);
     if (!isNaN(val) && !isNaN(oldVal)) {
       const delta = val - oldVal;
-      selectedRows.forEach(i => {
-        if (i !== idx) {
-          const input = document.querySelector(`.address-input[data-idx="${i}"]`);
-          const oldAddr = parseInt(fixtures[i].address, 10);
-          if (!isNaN(oldAddr)) {
-            input.value = oldAddr + delta;
-            fixtures[i].address = oldAddr + delta;
+      selectedRows.forEach(selId => {
+        if (selId !== id) {
+          const i = fixtures.findIndex(f => f.id === selId);
+          if (i !== -1) {
+            const input = document.querySelector(`.address-input[data-idx="${i}"]`);
+            const oldAddr = parseInt(fixtures[i].address, 10);
+            if (!isNaN(oldAddr)) {
+              input.value = oldAddr + delta;
+              fixtures[i].address = oldAddr + delta;
+            }
           }
         }
       });
