@@ -8,7 +8,7 @@ the pain of moving things around when you need to repatch a project (just change
 
 Installation
 
-1. Copy the three files (HTML, CSS, and JS) into the same folder on your web server.
+1. Copy the three files (HTML, CSS, and JS) into the same folder on your computer or on a web server.
 2. Open `index.html` in your browser.
 
 
