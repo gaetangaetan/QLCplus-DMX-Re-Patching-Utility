@@ -226,7 +226,7 @@ function updateCollisionHighlight() {
       }
     });
   });
-  // Check DMX address bounds (1-512)
+  // Check DMX  address bounds (1-512)
   document.querySelectorAll('tr[data-idx]').forEach(tr => {
     const idx = parseInt(tr.dataset.idx, 10);
     const addr = parseInt(fixtures[idx].address, 10);
