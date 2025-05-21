@@ -1,18 +1,31 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Re-Patching DMX QLC+</title>
+  <title>QLC+ DMX Re-Patching Utility</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Utilitaire de Re-Patching DMX pour QLC+</h1>
+  <h1>QLC+ DMX Re-Patching Utility</h1>
+  <div id="userGuide" style="background:#e3e8f0; padding:1em; border-radius:6px; margin-bottom:1.5em; max-width:800px;">
+    <strong>How to use:</strong>
+    <ul style="margin-top:0.5em;">
+      <li>Click <b>Choose File</b> and select your QLC+ project file (<code>.qxw</code>).</li>
+      <li>The list of fixtures will appear in a table. You can edit the <b>Universe</b> (0-3) and <b>DMX Address</b> (1-512) for each fixture.</li>
+      <li>Click the first cell of a row to select/deselect it. You can select multiple rows by dragging with the mouse.</li>
+      <li>When several rows are selected, changing the DMX address of one will shift all selected fixtures by the same amount.</li>
+      <li>Click column headers to sort by <b>Name</b>, <b>Universe</b>, <b>DMX Address</b>, or <b>Channels</b>.</li>
+      <li>Conflicts and out-of-range addresses are highlighted in red. Only valid, non-conflicting patches can be saved.</li>
+      <li>Click <b>Validate new patch</b> to check for conflicts and download the updated file.</li>
+    </ul>
+    <small>Tip: You can use the <b>Select all</b> (✔) and <b>Unselect all</b> (✖) buttons to quickly select or deselect all fixtures.</small>
+  </div>
   <input type="file" id="fileInput" accept=".qxw,.xml">
   <div id="fixturesContainer">
-    <!-- Le tableau des fixtures sera généré ici -->
+    <!-- The fixtures table will be generated here -->
   </div>
-  <button id="validateBtn" disabled>Valider le nouveau patch</button>
+  <button id="validateBtn" disabled>Validate new patch</button>
   <div id="message"></div>
   <script src="script.js"></script>
 </body>
