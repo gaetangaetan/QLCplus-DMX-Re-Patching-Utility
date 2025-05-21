@@ -1,0 +1,65 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 2em;
+  background: #f7f7fa;
+  color: #222;
+}
+h1 {
+  color: #2a3a5a;
+}
+#fixturesContainer {
+  margin-top: 2em;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: #fff;
+  box-shadow: 0 2px 8px #0001;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 0.5em 1em;
+  text-align: left;
+}
+th {
+  background: #e3e8f0;
+}
+input[type="number"] {
+  width: 5em;
+}
+input.invalid {
+  background: #ffe0e0;
+  border-color: #d00;
+}
+#message {
+  margin-top: 1em;
+  padding: 1em;
+  border-radius: 4px;
+  display: none;
+}
+#message.error {
+  background: #ffe0e0;
+  color: #a00;
+  border: 1px solid #d00;
+}
+#message.success {
+  background: #e0ffe0;
+  color: #080;
+  border: 1px solid #0a0;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.select-cell {
+  cursor: pointer;
+  background: #f0f0f0;
+  transition: background 0.2s;
+  user-select: none;
+}
+.select-cell.selected {
+  background: #b3d6ff;
+}
+.select-cell:active {
+  background: #a0c8f0;
+} 

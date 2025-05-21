@@ -1,0 +1,339 @@
+// Sélection des éléments
+const fileInput = document.getElementById('fileInput');
+const fixturesContainer = document.getElementById('fixturesContainer');
+const validateBtn = document.getElementById('validateBtn');
+const messageDiv = document.getElementById('message');
+
+let fixtures = [];
+let xmlDoc = null;
+let loadedFileName = 'nouveau_patch.qxw';
+let sortState = { key: null, asc: true };
+let selectedRows = [];
+let isDraggingSelect = false;
+let dragSelectValue = null;
+
+fileInput.addEventListener('change', handleFileSelect);
+validateBtn.addEventListener('click', handleValidate);
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadedFileName = file.name || 'nouveau_patch.qxw';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parser = new DOMParser();
+      xmlDoc = parser.parseFromString(e.target.result, 'text/xml');
+      fixtures = parseFixtures(xmlDoc);
+      renderFixturesTable(fixtures);
+      validateBtn.disabled = false;
+      showMessage('', '');
+    } catch (err) {
+      showMessage('Erreur lors de la lecture du fichier.', 'error');
+      validateBtn.disabled = true;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseFixtures(xml) {
+  // Cherche les fixtures dans <Workspace><Engine><Fixture>
+  const fixturesList = [];
+  const fixtureNodes = xml.querySelectorAll('Workspace > Engine > Fixture');
+  fixtureNodes.forEach(node => {
+    fixturesList.push({
+      id: node.querySelector('ID')?.textContent || '',
+      name: node.querySelector('Name')?.textContent || '',
+      universe: node.querySelector('Universe')?.textContent || '',
+      address: node.querySelector('Address')?.textContent || '',
+      channels: node.querySelector('Channels')?.textContent || '',
+      node: node // référence pour modification future
+    });
+  });
+  return fixturesList;
+}
+
+function renderFixturesTable(fixtures) {
+  if (!fixtures.length) {
+    fixturesContainer.innerHTML = '<p>Aucune fixture trouvée.</p>';
+    return;
+  }
+  let html = '<table><thead><tr>' +
+    '<th style="width:2.5em">'
+    + '<button type="button" id="checkAllBtn" title="Tout sélectionner">✔</button>'
+    + '<button type="button" id="uncheckAllBtn" title="Tout désélectionner">✖</button>'
+    + '</th>'
+    + '<th class="sortable" data-sort="name">Nom</th>'
+    + '<th class="sortable" data-sort="id">ID</th>'
+    + '<th class="sortable" data-sort="universe">Univers</th>'
+    + '<th class="sortable" data-sort="address">Adresse DMX</th>'
+    + '<th class="sortable" data-sort="channels">Canaux</th>' +
+    '</tr></thead><tbody>';
+  fixtures.forEach((f, idx) => {
+    const selected = selectedRows.includes(idx);
+    html += `<tr data-idx="${idx}">
+      <td class="select-cell${selected ? ' selected' : ''}" data-idx="${idx}"></td>
+      <td>${f.name}</td>
+      <td>${f.id}</td>
+      <td>
+        <select class="universe-select" data-idx="${idx}">
+          <option value="0"${f.universe == 0 ? ' selected' : ''}>0</option>
+          <option value="1"${f.universe == 1 ? ' selected' : ''}>1</option>
+          <option value="2"${f.universe == 2 ? ' selected' : ''}>2</option>
+          <option value="3"${f.universe == 3 ? ' selected' : ''}>3</option>
+        </select>
+      </td>
+      <td><input type="number" min="1" max="512" value="${f.address}" data-idx="${idx}" class="address-input"></td>
+      <td>${f.channels}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  fixturesContainer.innerHTML = html;
+
+  // Boutons tout sélectionner/désélectionner
+  document.getElementById('checkAllBtn').addEventListener('click', () => {
+    selectedRows = fixtures.map((_, i) => i);
+    renderFixturesTable(fixtures);
+    updateCollisionHighlight();
+  });
+  document.getElementById('uncheckAllBtn').addEventListener('click', () => {
+    selectedRows = [];
+    renderFixturesTable(fixtures);
+    updateCollisionHighlight();
+  });
+
+  // Drag multi-select
+  document.querySelectorAll('.select-cell').forEach(cell => {
+    cell.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const idx = parseInt(cell.dataset.idx, 10);
+      isDraggingSelect = true;
+      dragSelectValue = !selectedRows.includes(idx);
+      toggleSelect(idx, dragSelectValue);
+      e.preventDefault();
+    });
+    cell.addEventListener('mouseenter', e => {
+      if (isDraggingSelect) {
+        const idx = parseInt(cell.dataset.idx, 10);
+        toggleSelect(idx, dragSelectValue);
+      }
+    });
+  });
+  document.addEventListener('mouseup', () => {
+    isDraggingSelect = false;
+    dragSelectValue = null;
+  });
+
+  // Ajout des écouteurs pour la gestion continue
+  document.querySelectorAll('.address-input').forEach(input => {
+    input.addEventListener('input', handleAddressInput);
+  });
+  document.querySelectorAll('.universe-select').forEach(select => {
+    select.addEventListener('change', handleUniverseChange);
+  });
+
+  // Tri sur les colonnes
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortState.key === key) {
+        sortState.asc = !sortState.asc;
+      } else {
+        sortState.key = key;
+        sortState.asc = true;
+      }
+      sortFixtures(key, sortState.asc);
+      renderFixturesTable(fixtures);
+      updateCollisionHighlight();
+    });
+  });
+}
+
+function toggleSelect(idx, value) {
+  if (value) {
+    if (!selectedRows.includes(idx)) selectedRows.push(idx);
+  } else {
+    selectedRows = selectedRows.filter(i => i !== idx);
+  }
+  const cell = document.querySelector(`.select-cell[data-idx="${idx}"]`);
+  if (cell) {
+    if (value) cell.classList.add('selected');
+    else cell.classList.remove('selected');
+  }
+}
+
+function sortFixtures(key, asc) {
+  fixtures.sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (key === 'address' || key === 'channels' || key === 'universe') {
+      va = parseInt(va, 10); vb = parseInt(vb, 10);
+      if (isNaN(va)) va = 0; if (isNaN(vb)) vb = 0;
+    }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function handleAddressInput(e) {
+  const idx = parseInt(e.target.dataset.idx, 10);
+  const val = parseInt(e.target.value, 10);
+  const isChecked = selectedRows.includes(idx);
+  if (isChecked) {
+    // Déplacement groupé
+    const oldVal = parseInt(fixtures[idx].address, 10);
+    if (!isNaN(val) && !isNaN(oldVal)) {
+      const delta = val - oldVal;
+      selectedRows.forEach(i => {
+        if (i !== idx) {
+          const input = document.querySelector(`.address-input[data-idx="${i}"]`);
+          const oldAddr = parseInt(fixtures[i].address, 10);
+          if (!isNaN(oldAddr)) {
+            input.value = oldAddr + delta;
+            fixtures[i].address = oldAddr + delta;
+          }
+        }
+      });
+    }
+  }
+  fixtures[idx].address = val;
+  updateCollisionHighlight();
+}
+
+function handleUniverseChange(e) {
+  const idx = parseInt(e.target.dataset.idx, 10);
+  fixtures[idx].universe = e.target.value;
+  updateCollisionHighlight();
+}
+
+function updateCollisionHighlight() {
+  // Réinitialise les styles
+  document.querySelectorAll('tr[data-idx]').forEach(tr => {
+    tr.style.background = '';
+  });
+  // Détecte les conflits
+  const conflicts = detectConflicts(fixtures);
+  conflicts.forEach(c => {
+    document.querySelectorAll('tr[data-idx]').forEach(tr => {
+      const idx = parseInt(tr.dataset.idx, 10);
+      if (fixtures[idx].name === c.name1 || fixtures[idx].name === c.name2) {
+        tr.style.background = '#ffe0e0';
+      }
+    });
+  });
+  // Vérifie les bornes DMX (1-512)
+  document.querySelectorAll('tr[data-idx]').forEach(tr => {
+    const idx = parseInt(tr.dataset.idx, 10);
+    const addr = parseInt(fixtures[idx].address, 10);
+    if (isNaN(addr) || addr < 1 || addr > 512) {
+      tr.style.background = '#ffe0e0';
+    }
+  });
+}
+
+function handleValidate() {
+  // Récupère les valeurs éditées
+  const inputs = document.querySelectorAll('.address-input');
+  let hasInvalid = false;
+  // Met à jour les adresses dans fixtures
+  inputs.forEach(input => {
+    const idx = parseInt(input.dataset.idx, 10);
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val < 1 || val > 512) {
+      input.classList.add('invalid');
+      hasInvalid = true;
+    } else {
+      input.classList.remove('invalid');
+      fixtures[idx].address = val;
+    }
+  });
+  if (hasInvalid) {
+    showMessage('Certaines adresses sont hors plage (1-512).', 'error');
+    return;
+  }
+  // Détection des conflits
+  const conflicts = detectConflicts(fixtures);
+  if (conflicts.length > 0) {
+    let msg = 'Conflit(s) détecté(s) :<ul>';
+    conflicts.forEach(c => {
+      msg += `<li>Univers ${c.universe} : "${c.name1}" [${c.range1}] et "${c.name2}" [${c.range2}] se chevauchent</li>`;
+    });
+    msg += '</ul>';
+    showMessage(msg, 'error');
+    return;
+  }
+  // Si pas de conflit, met à jour le XML et propose le téléchargement
+  updateXmlAddresses();
+  downloadModifiedFile();
+  showMessage('Nouveau patch validé et fichier téléchargé.', 'success');
+}
+
+function detectConflicts(fixtures) {
+  // Regroupe par univers
+  const byUniverse = {};
+  fixtures.forEach(f => {
+    const u = f.universe;
+    if (!byUniverse[u]) byUniverse[u] = [];
+    byUniverse[u].push(f);
+  });
+  const conflicts = [];
+  Object.values(byUniverse).forEach(list => {
+    // Trie par adresse croissante
+    list.sort((a, b) => a.address - b.address);
+    for (let i = 0; i < list.length; i++) {
+      const f1 = list[i];
+      const start1 = parseInt(f1.address, 10);
+      const end1 = start1 + parseInt(f1.channels, 10) - 1;
+      for (let j = i + 1; j < list.length; j++) {
+        const f2 = list[j];
+        const start2 = parseInt(f2.address, 10);
+        const end2 = start2 + parseInt(f2.channels, 10) - 1;
+        // Chevauchement ?
+        if (start2 <= end1 && end2 >= start1) {
+          conflicts.push({
+            universe: f1.universe,
+            name1: f1.name,
+            name2: f2.name,
+            range1: `${start1}-${end1}`,
+            range2: `${start2}-${end2}`
+          });
+        }
+      }
+    }
+  });
+  return conflicts;
+}
+
+function updateXmlAddresses() {
+  fixtures.forEach(f => {
+    const addressNode = f.node.querySelector('Address');
+    if (addressNode) addressNode.textContent = f.address;
+  });
+}
+
+function downloadModifiedFile() {
+  const serializer = new XMLSerializer();
+  const xmlStr = serializer.serializeToString(xmlDoc);
+  const blob = new Blob([xmlStr], { type: 'application/xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = loadedFileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }, 100);
+}
+
+function showMessage(msg, type) {
+  if (!msg) {
+    messageDiv.style.display = 'none';
+    return;
+  }
+  messageDiv.textContent = msg;
+  messageDiv.className = '';
+  if (type) messageDiv.classList.add(type);
+  messageDiv.style.display = 'block';
+} 
