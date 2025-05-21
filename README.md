@@ -1,4 +1,5 @@
 QLC+ DMX Re-Patching Utility
+
 QLC+ is an amazing sofware but there are a couple of things that really bug me off. 
 One of them is that it's not possible to create virtual master faders (sort of DCAs)
 and I can understand that I might not be an easy thing to add. But the other thing is just 
