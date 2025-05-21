@@ -233,6 +233,7 @@ function updateCollisionHighlight() {
     if (isNaN(addr) || addr < 1 || addr > 512) {
       tr.style.background = '#ffe0e0';
     }
+    
   });
 }
 
